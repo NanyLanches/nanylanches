@@ -113,7 +113,7 @@
             <input type="hidden" id="horaOriginalEdicao" value="">
 
             <div id="avisoModoEdicao" class="bg-amber-950 border border-amber-500 p-2.5 rounded-xl text-xs text-amber-300 font-bold text-center mb-3 hidden">
-                ⚠️ EDITANDO COMANDA DO HISTÓRICO (<span id="nomeClienteEditando"></span>)
+                ⚠️ EDITANDO COMANDA (<span id="nomeClienteEditando"></span>)
             </div>
 
             <div class="mb-4">
@@ -708,7 +708,7 @@
 
                 cancelarPedidoCompleto();
                 salvarDadosNuvem();
-                alert("Comanda do histórico atualizada com sucesso!");
+                alert("Comanda atualizada com sucesso!");
                 trocarAba('tab-historico', document.querySelectorAll('.nav-btn')[2]);
                 return;
             }
@@ -814,9 +814,32 @@
             const index = filaPreparo.findIndex(p => p.id === id);
             if(index === -1) return;
             const pedido = filaPreparo[index];
+            
             carrinhoNany = [...pedido.itens];
             document.getElementById('nomeCliente').value = pedido.cliente === 'Cliente' ? '' : pedido.cliente;
-            formaPagamentoAtual = pedido.formaPagamento;
+            
+            // Atendimento
+            if (pedido.tipoAtendimento) {
+                tipoAtendimentoAtual = pedido.tipoAtendimento;
+                document.querySelectorAll('.btn-atendimento').forEach(b => {
+                    if (b.innerText.trim().toLowerCase() === pedido.tipoAtendimento.trim().toLowerCase()) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+            }
+
+            // Pagamento
+            formaPagamentoAtual = pedido.formaPagamento || 'pix';
+            document.querySelectorAll('.btn-pagamento').forEach(b => b.classList.remove('active'));
+            if(formaPagamentoAtual === 'pix') document.querySelectorAll('.btn-pagamento')[0]?.classList.add('active');
+            if(formaPagamentoAtual === 'dinheiro') {
+                document.querySelectorAll('.btn-pagamento')[1]?.classList.add('active');
+                document.getElementById('boxDinheiro').classList.remove('hidden');
+            }
+            if(formaPagamentoAtual === 'cartao') document.querySelectorAll('.btn-pagamento')[2]?.classList.add('active');
+            if(formaPagamentoAtual === 'retirada') document.querySelectorAll('.btn-pagamento')[3]?.classList.add('active');
 
             filaPreparo.splice(index, 1);
             salvarDadosNuvem();
@@ -898,9 +921,8 @@
 
             if (pedido.tipoAtendimento) {
                 tipoAtendimentoAtual = pedido.tipoAtendimento;
-                const btnsAtend = document.querySelectorAll('.btn-atendimento');
-                btnsAtend.forEach(b => {
-                    if(b.innerText.toLowerCase().includes(tipoAtendimentoAtual.toLowerCase().split(' ')[0])) {
+                document.querySelectorAll('.btn-atendimento').forEach(b => {
+                    if(b.innerText.trim().toLowerCase() === pedido.tipoAtendimento.trim().toLowerCase()) {
                         b.classList.add('active');
                     } else {
                         b.classList.remove('active');
@@ -908,13 +930,15 @@
                 });
             }
 
-            formaPagamentoAtual = pedido.formaPagamento;
-            const btnsPag = document.querySelectorAll('.btn-pagamento');
-            btnsPag.forEach(b => b.classList.remove('active'));
-            if(formaPagamentoAtual === 'pix') btnsPag[0]?.classList.add('active');
-            if(formaPagamentoAtual === 'dinheiro') btnsPag[1]?.classList.add('active');
-            if(formaPagamentoAtual === 'cartao') btnsPag[2]?.classList.add('active');
-            if(formaPagamentoAtual === 'retirada') btnsPag[3]?.classList.add('active');
+            formaPagamentoAtual = pedido.formaPagamento || 'pix';
+            document.querySelectorAll('.btn-pagamento').forEach(b => b.classList.remove('active'));
+            if(formaPagamentoAtual === 'pix') document.querySelectorAll('.btn-pagamento')[0]?.classList.add('active');
+            if(formaPagamentoAtual === 'dinheiro') {
+                document.querySelectorAll('.btn-pagamento')[1]?.classList.add('active');
+                document.getElementById('boxDinheiro').classList.remove('hidden');
+            }
+            if(formaPagamentoAtual === 'cartao') document.querySelectorAll('.btn-pagamento')[2]?.classList.add('active');
+            if(formaPagamentoAtual === 'retirada') document.querySelectorAll('.btn-pagamento')[3]?.classList.add('active');
 
             historico.splice(index, 1);
             salvarDadosNuvem();

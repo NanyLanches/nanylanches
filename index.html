@@ -113,7 +113,7 @@
             <input type="hidden" id="horaOriginalEdicao" value="">
 
             <div id="avisoModoEdicao" class="bg-amber-950 border border-amber-500 p-2.5 rounded-xl text-xs text-amber-300 font-bold text-center mb-3 hidden">
-                ⚠️ EDITANDO COMANDA (<span id="nomeClienteEditando"></span>)
+                ⚠️ EDITANDO PEDIDO DA COZINHA (<span id="nomeClienteEditando"></span>)
             </div>
 
             <div class="mb-4">
@@ -696,7 +696,8 @@
             const valorTotalVenda = carrinhoNany.reduce((sum, item) => sum + item.valor, 0);
 
             if (editandoId) {
-                historico.push({
+                // Verifica se era da fila de preparo ou historico baseando-se no ID ou apenas recria na fila
+                filaPreparo.push({
                     id: editandoId,
                     cliente: nomeCliente,
                     tipoAtendimento: tipoAtendimentoAtual,
@@ -708,8 +709,8 @@
 
                 cancelarPedidoCompleto();
                 salvarDadosNuvem();
-                alert("Comanda atualizada com sucesso!");
-                trocarAba('tab-historico', document.querySelectorAll('.nav-btn')[2]);
+                alert("Pedido atualizado na cozinha!");
+                trocarAba('tab-preparo', document.querySelectorAll('.nav-btn')[1]);
                 return;
             }
 
@@ -817,6 +818,11 @@
             
             carrinhoNany = [...pedido.itens];
             document.getElementById('nomeCliente').value = pedido.cliente === 'Cliente' ? '' : pedido.cliente;
+            document.getElementById('editandoHistoricoId').value = pedido.id;
+            document.getElementById('horaOriginalEdicao').value = pedido.hora;
+            document.getElementById('nomeClienteEditando').innerText = pedido.cliente;
+            document.getElementById('avisoModoEdicao').classList.remove('hidden');
+            document.getElementById('btnEnviarTexto').innerText = 'ATUALIZAR PEDIDO';
             
             // Atendimento
             if (pedido.tipoAtendimento) {
@@ -844,6 +850,8 @@
             filaPreparo.splice(index, 1);
             salvarDadosNuvem();
             trocarAba('tab-pedido', document.querySelectorAll('.nav-btn')[0]);
+            
+            // Renderiza o carrinho visualmente na tela
             atualizarCarrinhoTela();
         }
 
@@ -944,6 +952,8 @@
             salvarDadosNuvem();
 
             trocarAba('tab-pedido', document.querySelectorAll('.nav-btn')[0]);
+            
+            // Renderiza o carrinho visualmente na tela
             atualizarCarrinhoTela();
         }
 

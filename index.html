@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nany Lanches & Adega do Robert - PDV</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+    
+    <!-- FIREBASE SDK (COMPAT - REALTIME DATABASE) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #121212;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.95)), url('https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1920&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #FFFFFF;
+            min-height: 100vh;
+            padding-bottom: 140px;
+        }
+
+        .font-impact {
+            font-family: 'Anton', 'Impact', sans-serif;
+            letter-spacing: 1.5px;
+        }
+
+        .glass-card {
+            background: rgba(20, 20, 24, 0.92);
+            backdrop-filter: blur(10px);
+            border: 2px solid #b45309;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.9);
+        }
+
+        .brand-title-box {
+            background-color: #d97706;
+            color: #000000;
+            font-family: 'Anton', sans-serif;
+            letter-spacing: 1.5px;
+            border: 1px solid #f59e0b;
+        }
+
+        .btn-app {
+            background-color: rgba(25, 25, 25, 0.95);
+            border: 2px solid #333333;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+
+        .btn-app:active {
+            transform: scale(0.95);
+            border-color: #f59e0b;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .nav-btn {
+            color: #777777;
+            transition: all 0.2s;
+        }
+
+        .nav-btn.active {
+            color: #f59e0b;
+            font-weight: 900;
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        .cat-btn {
+            background: rgba(30, 30, 35, 0.9);
+            border: 1px solid #444;
+            color: #aaa;
+            transition: all 0.2s;
+            font-size: 9px;
+        }
+        .cat-btn.active {
+            background: #d97706;
+            color: #000;
+            border-color: #f59e0b;
+            font-weight: 900;
+        }
+        .cat-pane {
+            display: none;
+        }
+        .cat-pane.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 max-w-3xl mx-auto">
+
+    <!-- CABEÇALHO -->
+    <header class="text-center my-3">
+        <h1 class="font-impact text-3xl text-amber-500 tracking-wider drop-shadow-[0_4px_8px_rgba(0,0,0,1)]">NANY LANCHES</h1>
+    </header>
+
+    <!-- ABA 1: NOVO PEDIDO -->
+    <main id="tab-pedido" class="tab-content active space-y-4">
+        <div class="glass-card rounded-3xl p-4 md:p-6 mb-6">
+            
+            <input type="hidden" id="editandoHistoricoId" value="">
+            <input type="hidden" id="horaOriginalEdicao" value="">
+
+            <div id="avisoModoEdicao" class="bg-amber-950 border border-amber-500 p-2.5 rounded-xl text-xs text-amber-300 font-bold text-center mb-3 hidden">
+                ⚠️ EDITANDO COMANDA DO HISTÓRICO (<span id="nomeClienteEditando"></span>)
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-black text-gray-300 uppercase mb-1">Nome do Cliente / Mesa:</label>
+                <input type="text" id="nomeCliente" placeholder="Ex: João, Mesa 2..." class="w-full bg-black/90 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+            </div>
+
+            <!-- TIPO DE ATENDIMENTO -->
+            <div class="mb-4">
+                <label class="block text-xs font-black text-gray-300 uppercase mb-1.5">Tipo de Atendimento:</label>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-1.5 text-xs font-bold">
+                    <button type="button" onclick="setTipoAtendimento('Comer no Local', this)" class="btn-atendimento btn-app p-2 rounded-xl text-center active">Comer no Local</button>
+                    <button type="button" onclick="setTipoAtendimento('Retirada Balcão', this)" class="btn-atendimento btn-app p-2 rounded-xl text-center">Retirada Balcão</button>
+                    <button type="button" onclick="setTipoAtendimento('WhatsApp', this)" class="btn-atendimento btn-app p-2 rounded-xl text-center text-emerald-400 border-emerald-500">WhatsApp</button>
+                    <button type="button" onclick="setTipoAtendimento('Entrega Delivery', this)" class="btn-atendimento btn-app p-2 rounded-xl text-center text-sky-400 border-sky-500">Entrega</button>
+                </div>
+            </div>
+
+            <!-- SELEÇÃO DE CATEGORIAS DE PRODUTOS -->
+            <div class="mb-5">
+                <div class="brand-title-box text-center py-1.5 px-4 rounded-xl text-sm uppercase mb-3 font-bold shadow-lg">
+                    1. ESCOLHA O ITEM
+                </div>
+
+                <!-- Botões de Categoria -->
+                <div class="grid grid-cols-6 gap-1 mb-3 font-bold">
+                    <button type="button" onclick="mudarCategoria('lanches', this)" class="cat-btn active py-2 px-1 rounded-xl text-center uppercase">Lanches</button>
+                    <button type="button" onclick="mudarCategoria('hotdogs', this)" class="cat-btn py-2 px-1 rounded-xl text-center uppercase">Hot Dogs</button>
+                    <button type="button" onclick="mudarCategoria('porcoes', this)" class="cat-btn py-2 px-1 rounded-xl text-center uppercase">Porções</button>
+                    <button type="button" onclick="mudarCategoria('acai', this)" class="cat-btn py-2 px-1 rounded-xl text-center uppercase text-purple-400 border-purple-500">Açaí</button>
+                    <button type="button" onclick="mudarCategoria('bebidas', this)" class="cat-btn py-2 px-1 rounded-xl text-center uppercase text-amber-300">Bebidas</button>
+                    <button type="button" onclick="mudarCategoria('adicionais', this)" class="cat-btn py-2 px-1 rounded-xl text-center uppercase">Turbine+</button>
+                </div>
+                
+                <!-- Conteúdo das Categorias -->
+                <div id="cat-lanches" class="cat-pane active max-h-80 overflow-y-auto p-1"><div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-lanches"></div></div>
+                <div id="cat-hotdogs" class="cat-pane max-h-80 overflow-y-auto p-1"><div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-hotdogs"></div></div>
+                <div id="cat-porcoes" class="cat-pane max-h-80 overflow-y-auto p-1"><div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-porcoes"></div></div>
+                
+                <div id="cat-acai" class="cat-pane max-h-80 overflow-y-auto p-1 space-y-3">
+                    <div>
+                        <span class="block text-[10px] font-black text-amber-400 uppercase mb-1 border-b border-gray-800 pb-0.5">1. TAMANHO DO AÇAÍ</span>
+                        <div class="grid grid-cols-3 gap-2" id="grid-acai-tamanhos"></div>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] font-black text-amber-400 uppercase mb-1 border-b border-gray-800 pb-0.5">2. ACOMPANHAMENTOS AÇAÍ (+ADICIONAL)</span>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-acai-acompanhamentos"></div>
+                    </div>
+                </div>
+
+                <div id="cat-bebidas" class="cat-pane max-h-80 overflow-y-auto p-1"><div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-bebidas"></div></div>
+                <div id="cat-adicionais" class="cat-pane max-h-80 overflow-y-auto p-1"><div class="grid grid-cols-2 md:grid-cols-3 gap-2" id="grid-adicionais"></div></div>
+            </div>
+
+            <!-- RESUMO + FORMA DE PAGAMENTO -->
+            <div class="bg-black/90 border-2 border-amber-600 rounded-2xl p-4 mb-5">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-3">
+                    <span class="text-xs uppercase font-black text-amber-400">RESUMO DO PEDIDO</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="abrirModalAvulso()" class="bg-amber-600 hover:bg-amber-500 text-black font-black text-[10px] px-2.5 py-1 rounded-lg uppercase tracking-wide transition shadow">
+                            + Item Avulso
+                        </button>
+                        <span id="qtdItensCarrinho" class="text-xs bg-amber-600 text-black font-black px-2 py-0.5 rounded-full border border-amber-400">0 item(ns)</span>
+                    </div>
+                </div>
+
+                <div id="listaCarrinho" class="space-y-3 mb-3">
+                    <div class="text-xs text-gray-500 italic text-center py-2">Selecione um item nas categorias acima.</div>
+                </div>
+
+                <div class="flex justify-between items-center pt-2 border-t border-gray-800 mb-3">
+                    <span class="font-impact text-xl text-white">TOTAL A PAGAR:</span>
+                    <span id="totalCarrinho" class="font-impact text-3xl text-amber-400">R$ 0,00</span>
+                </div>
+
+                <!-- FORMA DE PAGAMENTO -->
+                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800 mb-3">
+                    <label class="block text-xs font-bold text-gray-300 uppercase mb-2">Forma de Pagamento:</label>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs font-bold mb-1.5">
+                        <button type="button" onclick="setFormaPagamento('pix', this)" class="btn-pagamento btn-app p-2 rounded-xl text-center active">PIX</button>
+                        <button type="button" onclick="setFormaPagamento('dinheiro', this)" class="btn-pagamento btn-app p-2 rounded-xl text-center">Dinheiro</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs font-bold">
+                        <button type="button" onclick="setFormaPagamento('cartao', this)" class="btn-pagamento btn-app p-2 rounded-xl text-center">Cartão</button>
+                        <button type="button" onclick="setFormaPagamento('retirada', this)" class="btn-pagamento btn-app p-2 rounded-xl text-center text-amber-400 border-amber-400">Pagar na Retirada</button>
+                    </div>
+                </div>
+
+                <!-- CÁLCULO TROCO -->
+                <div id="boxDinheiro" class="bg-gray-900/90 p-3 rounded-xl border border-gray-800 space-y-2 hidden">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-gray-300 uppercase">Valor Recebido:</label>
+                        <div class="flex gap-1 text-[10px]">
+                            <button type="button" onclick="atribuirValorPago(20)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-0.5 rounded font-bold">R$20</button>
+                            <button type="button" onclick="atribuirValorPago(50)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-0.5 rounded font-bold">R$50</button>
+                            <button type="button" onclick="atribuirValorPago(100)" class="bg-gray-800 hover:bg-gray-700 text-white px-2 py-0.5 rounded font-bold">R$100</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-gray-400">R$</span>
+                        <input type="number" id="valorPagoInput" oninput="calcularTroco()" placeholder="0,00" step="0.5" class="w-full bg-black border border-gray-700 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                    </div>
+
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase">TROCO DO CLIENTE:</span>
+                        <span id="displayTroco" class="font-impact text-xl text-emerald-400">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <button type="button" onclick="enviarParaFila()" id="btnEnviarTexto" class="brand-title-box py-4 rounded-2xl font-impact text-lg uppercase tracking-wider hover:opacity-90 active:scale-95 transition shadow-lg">
+                    ENVIAR
+                </button>
+                <button type="button" onclick="cancelarPedidoCompleto()" class="bg-red-950/80 border border-red-600 text-red-200 py-4 rounded-2xl font-impact text-md uppercase hover:bg-red-900 active:scale-95 transition">
+                    CANCELAR
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ABA 2: FILA DE PREPARO -->
+    <main id="tab-preparo" class="tab-content space-y-4">
+        <div class="glass-card rounded-3xl p-5 mb-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-800">
+                <h2 class="font-impact text-2xl text-amber-400 uppercase">COZINHA</h2>
+                <span id="badgeFilaCount" class="bg-amber-600 text-black font-black text-xs px-3 py-1 rounded-full border border-amber-400">0 pendentes</span>
+            </div>
+
+            <div id="listaFilaPreparo" class="space-y-4"></div>
+        </div>
+    </main>
+
+    <!-- ABA 3: HISTÓRICO -->
+    <main id="tab-historico" class="tab-content space-y-4">
+        <div class="glass-card rounded-3xl p-5 mb-6">
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-800">
+                <h2 class="font-impact text-2xl text-amber-400 uppercase">HISTÓRICO</h2>
+                <button type="button" onclick="limparHistorico()" class="text-xs font-bold text-red-400 underline uppercase">Zerar Caixa</button>
+            </div>
+
+            <div id="listaHistorico" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <!-- ABA 4: RELATÓRIOS / CAIXA -->
+    <main id="tab-relatorio" class="tab-content space-y-4">
+        <div class="glass-card rounded-3xl p-5 mb-6">
+            <h2 class="font-impact text-2xl text-amber-400 uppercase text-center mb-1">
+                CAIXA GERAL
+            </h2>
+            <p class="text-[10px] text-gray-400 text-center uppercase font-bold mb-4">Resumo das vendas pagas</p>
+
+            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+                <div class="bg-black/90 p-2.5 rounded-2xl border border-sky-500/50">
+                    <span class="block text-[9px] text-sky-400 font-bold uppercase">PIX</span>
+                    <span id="faturamentoPix" class="font-impact text-lg text-sky-300 mt-0.5 block">R$ 0,00</span>
+                </div>
+                <div class="bg-black/90 p-2.5 rounded-2xl border border-emerald-500/50">
+                    <span class="block text-[9px] text-emerald-400 font-bold uppercase">DINHEIRO</span>
+                    <span id="faturamentoDinheiro" class="font-impact text-lg text-emerald-300 mt-0.5 block">R$ 0,00</span>
+                </div>
+                <div class="bg-black/90 p-2.5 rounded-2xl border border-purple-500/50">
+                    <span class="block text-[9px] text-purple-400 font-bold uppercase">CARTÃO</span>
+                    <span id="faturamentoCartao" class="font-impact text-lg text-purple-300 mt-0.5 block">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="bg-black/95 p-4 rounded-2xl border-2 border-emerald-500 text-center mb-5">
+                <span class="block text-xs text-emerald-400 font-black uppercase tracking-wider">TOTAL ENTRADO EM CAIXA</span>
+                <span id="faturamentoTotal" class="font-impact text-4xl text-emerald-400 mt-1 block">R$ 0,00</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL ITEM AVULSO -->
+    <div id="modalAvulso" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-sm border-2 border-amber-500 space-y-4">
+            <h3 class="font-impact text-xl text-amber-400 text-center uppercase">ADICIONAR ITEM AVULSO</h3>
+            
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-gray-300 uppercase mb-1">Nome do Item / Produto:</label>
+                    <input type="text" id="nomeAvulsoInput" placeholder="Ex: Produto Diversos..." class="w-full bg-black border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block font-bold text-gray-300 uppercase mb-1">Preço (R$):</label>
+                    <input type="number" id="precoAvulsoInput" placeholder="0.00" step="0.5" class="w-full bg-black border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="adicionarItemAvulso()" class="bg-amber-600 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl uppercase text-xs transition">
+                    ADICIONAR
+                </button>
+                <button type="button" onclick="fecharModalAvulso()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2.5 rounded-xl uppercase text-xs transition">
+                    CANCELAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PAGAMENTO RETIRADA -->
+    <div id="modalPagamento" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-sm border-2 border-amber-500">
+            <h3 class="font-impact text-xl text-amber-400 text-center uppercase mb-2">CONFIRMAR PAGAMENTO</h3>
+            <p id="modalClienteTexto" class="text-xs text-gray-300 text-center uppercase font-bold mb-4">Cliente: João</p>
+            
+            <div class="space-y-2 mb-4">
+                <button type="button" onclick="confirmarFormaModal('pix')" class="w-full bg-sky-950/80 border border-sky-500 text-sky-200 py-3 rounded-xl font-bold uppercase text-xs hover:bg-sky-900 transition">
+                    PAGO NO PIX
+                </button>
+                <button type="button" onclick="confirmarFormaModal('dinheiro')" class="w-full bg-emerald-950/80 border border-emerald-500 text-emerald-200 py-3 rounded-xl font-bold uppercase text-xs hover:bg-emerald-900 transition">
+                    PAGO EM DINHEIRO
+                </button>
+                <button type="button" onclick="confirmarFormaModal('cartao')" class="w-full bg-purple-950/80 border border-purple-500 text-purple-200 py-3 rounded-xl font-bold uppercase text-xs hover:bg-purple-900 transition">
+                    PAGO NO CARTÃO
+                </button>
+            </div>
+
+            <button type="button" onclick="fecharModal()" class="w-full bg-gray-800 text-gray-300 py-2.5 rounded-xl font-bold uppercase text-xs hover:bg-gray-700 transition">
+                CANCELAR
+            </button>
+        </div>
+    </div>
+
+    <!-- NAVEGAÇÃO INFERIOR -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-black/95 border-t-2 border-amber-600 px-2 py-2.5 flex justify-around items-center z-50 backdrop-blur-md">
+        <button id="btn-nav-pedido" type="button" onclick="trocarAba('tab-pedido', this)" class="nav-btn active flex flex-col items-center">
+            <span class="font-impact text-[11px] uppercase tracking-wider mt-0.5">PEDIDO</span>
+        </button>
+        <button type="button" onclick="trocarAba('tab-preparo', this)" class="nav-btn flex flex-col items-center relative">
+            <span id="badgeFilaNav" class="absolute -top-1 right-2 bg-red-600 text-white font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+            <span class="font-impact text-[11px] uppercase tracking-wider mt-0.5">PREPARO</span>
+        </button>
+        <button type="button" onclick="trocarAba('tab-historico', this)" class="nav-btn flex flex-col items-center">
+            <span class="font-impact text-[11px] uppercase tracking-wider mt-0.5">HISTÓRICO</span>
+        </button>
+        <button type="button" onclick="trocarAba('tab-relatorio', this)" class="nav-btn flex flex-col items-center">
+            <span class="font-impact text-[11px] uppercase tracking-wider mt-0.5">CAIXA</span>
+        </button>
+    </nav>
+
+    <!-- JS DO SISTEMA COM REALTIME DATABASE -->
+    <script>
+        // ======= CONFIGURAÇÃO DO FIREBASE (REALTIME DATABASE) =======
+        const firebaseConfig = {
+            apiKey: "AIzaSyCEVLzIbzQDP2ftBhDXYRuaux9bstOsj9U",
+            authDomain: "nanylanchespvd.firebaseapp.com",
+            databaseURL: "https://nanylanchespvd-default-rtdb.firebaseio.com",
+            projectId: "nanylanchespvd",
+            storageBucket: "nanylanchespvd.firebasestorage.app",
+            messagingSenderId: "572645772317",
+            appId: "1:572645772317:web:637505939d79be9c5a8af4",
+            measurementId: "G-GJW20SM13L"
+        };
+        // ============================================================
+
+        firebase.initializeApp(firebaseConfig);
+        const rtdb = firebase.database();
+
+        const lanchesLista = [
+            { nome: 'Misto Quente', preco: 15.00 },
+            { nome: 'Bauru', preco: 18.00 },
+            { nome: 'X-Burguer', preco: 20.00 },
+            { nome: 'X-Salada', preco: 25.00 },
+            { nome: 'X-Bacon', preco: 30.00 },
+            { nome: 'X-Calabresa', preco: 30.00 },
+            { nome: 'X-Egg', preco: 28.00 },
+            { nome: 'X-Dog', preco: 30.00 },
+            { nome: 'X-Burguer Cheddar e Bacon', preco: 34.00 },
+            { nome: 'X-Cheddar Dois Hambúrgueres', preco: 35.00 },
+            { nome: 'X-Frango com Bacon', preco: 34.00 },
+            { nome: 'X-Alcatra', preco: 40.00 },
+            { nome: 'X-Coração', preco: 38.00 },
+            { nome: 'X-Burguer Cheddar e Ovo', preco: 30.00 },
+            { nome: 'X-Tudão Aberto com Fritas', preco: 60.00 }
+        ];
+
+        const hotdogsLista = [
+            { nome: 'Dog Kids', preco: 18.00 },
+            { nome: 'Dog Tradicional', preco: 24.00 },
+            { nome: 'Dog Egg', preco: 26.00 },
+            { nome: 'Dog Bacon', preco: 28.00 },
+            { nome: 'Dog Frango', preco: 28.00 },
+            { nome: 'Dog Frango com Bacon', preco: 32.00 },
+            { nome: 'Dog Calabresa', preco: 28.00 },
+            { nome: 'Dog Frango com Calabresa', preco: 32.00 },
+            { nome: 'Dog Três Queijos', preco: 33.00 },
+            { nome: 'Dog Pizza', preco: 28.00 },
+            { nome: 'Dog Bauru', preco: 29.00 },
+            { nome: 'Dog Tudão', preco: 40.00 }
+        ];
+
+        const porcoesLista = [
+            { nome: 'Batata Pequena (300g)', preco: 15.00 },
+            { nome: 'Batata Média (500g)', preco: 30.00 },
+            { nome: 'Batata Grande (700g)', preco: 49.00 },
+            { nome: 'Batata c/ Salsicha (300g)', preco: 24.00 },
+            { nome: 'Batata c/ Cheddar e Bacon (300g)', preco: 32.00 },
+            { nome: 'Batata c/ Cheddar e Bacon (600g)', preco: 55.00 },
+            { nome: 'Batata c/ Calabresa e Catupiry (300g)', preco: 30.00 },
+            { nome: 'Batata c/ Calabresa e Catupiry (600g)', preco: 55.00 },
+            { nome: 'Batata Bagunça (300g)', preco: 40.00 },
+            { nome: 'Batata Bagunça (600g)', preco: 60.00 },
+            { nome: 'Frango Fit (1 pessoa)', preco: 25.00 },
+            { nome: 'Calabresa Acebolada (2 pess)', preco: 65.00 },
+            { nome: 'Frango (2 pessoas)', preco: 65.00 },
+            { nome: 'Mista (2 pessoas)', preco: 90.00 },
+            { nome: 'Mista (4 pessoas)', preco: 140.00 }
+        ];
+
+        const acaiTamanhos = [
+            { nome: 'Açaí 180ml', preco: 6.00 },
+            { nome: 'Açaí 300ml', preco: 12.00 },
+            { nome: 'Açaí 500ml', preco: 18.00 }
+        ];
+
+        const acaiAcompanhamentos = [
+            { nome: 'Banana', preco: 2.50 },
+            { nome: 'Morango', preco: 4.00 },
+            { nome: 'Uva Verde', preco: 5.00 },
+            { nome: 'Leite Condensado', preco: 3.00 },
+            { nome: 'Leite em Pó', preco: 3.00 },
+            { nome: 'Paçoca', preco: 3.00 },
+            { nome: 'Confete', preco: 4.00 },
+            { nome: 'Granola', preco: 4.00 },
+            { nome: 'Nutella', preco: 5.00 },
+            { nome: 'Creme de Ninho', preco: 4.00 }
+        ];
+
+        const bebidasLista = [
+            { nome: 'Refri Lata', preco: 6.00 },
+            { nome: 'Refri 600ml', preco: 9.00 },
+            { nome: 'Refri 2L', preco: 17.00 },
+            { nome: 'Kaiser Lata', preco: 6.00 },
+            { nome: 'Skol Lata', preco: 7.00 },
+            { nome: 'Amstel Lata', preco: 7.00 },
+            { nome: 'Brahma Chop', preco: 7.00 },
+            { nome: 'Brahma Zero', preco: 7.00 },
+            { nome: 'Long Neck', preco: 10.00 },
+            { nome: 'Água S/Gás', preco: 3.00 },
+            { nome: 'Água C/Gás', preco: 4.00 },
+            { nome: 'Suco Lata', preco: 6.00 },
+            { nome: 'Energético Lata', preco: 15.00 },
+            { nome: 'Energético 2L', preco: 20.00 }
+        ];
+
+        const adicionaisLanches = [
+            { nome: 'Ovo', preco: 3.00 },
+            { nome: 'Salsicha', preco: 3.00 },
+            { nome: 'Presunto', preco: 2.00 },
+            { nome: 'Cheddar', preco: 4.00 },
+            { nome: 'Catupiry', preco: 4.00 },
+            { nome: 'Frango', preco: 9.00 },
+            { nome: 'Bacon', preco: 8.00 },
+            { nome: 'Calabresa', preco: 8.00 },
+            { nome: 'Hambúrguer', preco: 9.00 }
+        ];
+
+        let carrinhoNany = [];
+        let formaPagamentoAtual = 'pix';
+        let tipoAtendimentoAtual = 'Comer no Local';
+
+        let filaPreparo = [];
+        let historico = [];
+        let pedidoPendenteConclusaoId = null;
+
+        carregarCatalogoCategorias();
+
+        // ESCUTAR MUDANÇAS EM TEMPO REAL NO REALTIME DATABASE
+        rtdb.ref('nany_dados').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                filaPreparo = data.fila || [];
+                historico = data.historico || [];
+                atualizarContadoresFila();
+                
+                const abaAtiva = document.querySelector('.tab-content.active').id;
+                if(abaAtiva === 'tab-preparo') renderFilaPreparo();
+                if(abaAtiva === 'tab-historico') renderHistorico();
+                if(abaAtiva === 'tab-relatorio') renderRelatorios();
+            }
+        });
+
+        function salvarDadosNuvem() {
+            rtdb.ref('nany_dados').set({
+                fila: filaPreparo,
+                historico: historico
+            }).catch((error) => {
+                console.error("Erro ao salvar no Realtime Database: ", error);
+            });
+        }
+
+        function setTipoAtendimento(tipo, btn) {
+            tipoAtendimentoAtual = tipo;
+            document.querySelectorAll('.btn-atendimento').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+        }
+
+        function mudarCategoria(catId, btn) {
+            document.querySelectorAll('.cat-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+
+            document.getElementById('cat-' + catId).classList.add('active');
+            if(btn) btn.classList.add('active');
+        }
+
+        function carregarCatalogoCategorias() {
+            preencherGrid('grid-lanches', lanchesLista, 'item');
+            preencherGrid('grid-hotdogs', hotdogsLista, 'item');
+            preencherGrid('grid-porcoes', porcoesLista, 'item');
+            preencherGrid('grid-acai-tamanhos', acaiTamanhos, 'item');
+            preencherGrid('grid-acai-acompanhamentos', acaiAcompanhamentos, 'adicional');
+            preencherGrid('grid-bebidas', bebidasLista, 'item');
+            preencherGrid('grid-adicionais', adicionaisLanches, 'adicional');
+        }
+
+        function preencherGrid(containerId, lista, tipo) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            lista.forEach(prod => {
+                container.innerHTML += `
+                    <button type="button" onclick="adicionarDiretoCarrinho('${prod.nome}', ${prod.preco}, '${tipo}')" class="btn-app rounded-2xl p-2.5 text-center flex flex-col justify-between items-center h-22 hover:border-amber-500">
+                        <span class="font-bold text-xs uppercase text-gray-200 line-clamp-2">${prod.nome}</span>
+                        <span class="font-black text-xs text-amber-400 mt-1">${tipo === 'adicional' ? '+R$' : 'R$'} ${prod.preco.toFixed(2).replace('.', ',')}</span>
+                    </button>
+                `;
+            });
+        }
+
+        function adicionarDiretoCarrinho(nome, preco, tipo) {
+            if (tipo === 'adicional' && carrinhoNany.length === 0) {
+                alert("Adicione um item principal primeiro!");
+                return;
+            }
+
+            if (tipo === 'adicional') {
+                let ultimoItem = carrinhoNany[carrinhoNany.length - 1];
+                ultimoItem.adicionais.push(nome);
+                ultimoItem.valor += preco;
+            } else {
+                carrinhoNany.push({
+                    nome: nome,
+                    adicionais: [],
+                    observacao: '',
+                    valor: preco
+                });
+            }
+
+            atualizarCarrinhoTela();
+        }
+
+        function abrirModalAvulso() {
+            document.getElementById('nomeAvulsoInput').value = '';
+            document.getElementById('precoAvulsoInput').value = '';
+            document.getElementById('modalAvulso').classList.remove('hidden');
+        }
+
+        function fecharModalAvulso() {
+            document.getElementById('modalAvulso').classList.add('hidden');
+        }
+
+        function adicionarItemAvulso() {
+            const nome = document.getElementById('nomeAvulsoInput').value.trim();
+            const preco = parseFloat(document.getElementById('precoAvulsoInput').value);
+
+            if (!nome) { alert("Digite o nome!"); return; }
+            if (isNaN(preco) || preco <= 0) { alert("Digite um preço válido!"); return; }
+
+            carrinhoNany.push({
+                nome: `[Avulso] ${nome}`,
+                adicionais: [],
+                observacao: '',
+                valor: preco
+            });
+
+            atualizarCarrinhoTela();
+            fecharModalAvulso();
+        }
+
+        function atualizarObservacao(index, valor) {
+            carrinhoNany[index].observacao = valor;
+        }
+
+        function removerDoCarrinho(index) {
+            carrinhoNany.splice(index, 1);
+            atualizarCarrinhoTela();
+        }
+
+        function formatarAdicionaisAgrupados(adicionais) {
+            if (!adicionais || adicionais.length === 0) return '';
+            let contagem = {};
+            adicionais.forEach(item => { contagem[item] = (contagem[item] || 0) + 1; });
+            let formatados = [];
+            for (let nome in contagem) {
+                let qtd = contagem[nome];
+                formatados.push(qtd > 1 ? `${qtd}x ${nome}` : nome);
+            }
+            return formatados.join(', ');
+        }
+
+        function atualizarCarrinhoTela() {
+            const container = document.getElementById('listaCarrinho');
+            const totalDisplay = document.getElementById('totalCarrinho');
+            const qtdDisplay = document.getElementById('qtdItensCarrinho');
+
+            qtdDisplay.innerText = `${carrinhoNany.length} item(ns)`;
+
+            if(carrinhoNany.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-500 italic text-center py-2">Selecione um item nas categorias acima.</div>`;
+                totalDisplay.innerText = "R$ 0,00";
+                calcularTroco();
+                return;
+            }
+
+            let html = '';
+            let totalGeral = 0;
+
+            carrinhoNany.forEach((item, index) => {
+                totalGeral += item.valor;
+                let adicHtml = item.adicionais.length > 0 ? `<div class="text-amber-300 font-bold mt-1 bg-amber-950/60 p-1.5 rounded border border-amber-600/80 text-[11px]">🧀 + Adicionais: ${formatarAdicionaisAgrupados(item.adicionais)}</div>` : '';
+
+                html += `
+                    <div class="bg-gray-900/90 border border-gray-800 p-3 rounded-xl text-xs space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-white text-sm">${index + 1}. ${item.nome}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-amber-400">R$ ${item.valor.toFixed(2).replace('.', ',')}</span>
+                                <button type="button" onclick="removerDoCarrinho(${index})" class="text-red-400 font-bold px-2 text-sm">[X]</button>
+                            </div>
+                        </div>
+                        ${adicHtml}
+                        <input type="text" value="${item.observacao || ''}" oninput="atualizarObservacao(${index}, this.value)" placeholder="Obs: ex: sem gelo..." class="w-full bg-black border border-gray-700 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-amber-500">
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            totalDisplay.innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+            calcularTroco();
+        }
+
+        function setFormaPagamento(tipo, btn) {
+            formaPagamentoAtual = tipo;
+            document.querySelectorAll('.btn-pagamento').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+
+            const boxDinheiro = document.getElementById('boxDinheiro');
+            if(tipo === 'dinheiro') boxDinheiro.classList.remove('hidden');
+            else boxDinheiro.classList.add('hidden');
+        }
+
+        function atribuirValorPago(v) {
+            document.getElementById('valorPagoInput').value = v;
+            calcularTroco();
+        }
+
+        function calcularTroco() {
+            const totalGeral = carrinhoNany.reduce((sum, item) => sum + item.valor, 0);
+            const valorPago = parseFloat(document.getElementById('valorPagoInput').value) || 0;
+            const displayTroco = document.getElementById('displayTroco');
+
+            if(valorPago === 0) {
+                displayTroco.innerText = "R$ 0,00";
+                displayTroco.className = "font-impact text-xl text-emerald-400";
+                return;
+            }
+
+            const troco = valorPago - totalGeral;
+            displayTroco.innerText = troco < 0 ? `Faltam R$ ${Math.abs(troco).toFixed(2).replace('.', ',')}` : `R$ ${troco.toFixed(2).replace('.', ',')}`;
+            displayTroco.className = troco < 0 ? "font-impact text-sm text-red-400 font-bold" : "font-impact text-xl text-emerald-400";
+        }
+
+        function enviarParaFila() {
+            if (carrinhoNany.length === 0) { alert("Adicione pelo menos 1 item!"); return; }
+
+            const nomeCliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
+            const editandoId = document.getElementById('editandoHistoricoId').value;
+            const horaOriginal = document.getElementById('horaOriginalEdicao').value;
+            const horaFormatada = horaOriginal || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const valorTotalVenda = carrinhoNany.reduce((sum, item) => sum + item.valor, 0);
+
+            if (editandoId) {
+                historico.push({
+                    id: editandoId,
+                    cliente: nomeCliente,
+                    tipoAtendimento: tipoAtendimentoAtual,
+                    hora: horaFormatada,
+                    itens: [...carrinhoNany],
+                    total: valorTotalVenda,
+                    formaPagamento: formaPagamentoAtual
+                });
+
+                cancelarPedidoCompleto();
+                salvarDadosNuvem();
+                alert("Comanda atualizada!");
+                trocarAba('tab-historico', document.querySelectorAll('.nav-btn')[2]);
+                return;
+            }
+
+            filaPreparo.push({
+                id: 'nany_' + Date.now(),
+                cliente: nomeCliente,
+                tipoAtendimento: tipoAtendimentoAtual,
+                hora: horaFormatada,
+                itens: [...carrinhoNany],
+                total: valorTotalVenda,
+                formaPagamento: formaPagamentoAtual
+            });
+
+            salvarDadosNuvem();
+            cancelarPedidoCompleto();
+            alert("Pedido enviado para a cozinha!");
+        }
+
+        function cancelarPedidoCompleto() {
+            carrinhoNany = [];
+            document.getElementById('editandoHistoricoId').value = '';
+            document.getElementById('horaOriginalEdicao').value = '';
+            document.getElementById('avisoModoEdicao').classList.add('hidden');
+            document.getElementById('btnEnviarTexto').innerText = 'ENVIAR';
+            atualizarCarrinhoTela();
+        }
+
+        function atualizarContadoresFila() {
+            const count = filaPreparo.length;
+            document.getElementById('badgeFilaCount').innerText = `${count} pendentes`;
+            const badgeNav = document.getElementById('badgeFilaNav');
+            if(count > 0) {
+                badgeNav.innerText = count;
+                badgeNav.classList.remove('hidden');
+            } else {
+                badgeNav.classList.add('hidden');
+            }
+        }
+
+        function alternarRiscoItem(elementoDiv) {
+            elementoDiv.style.textDecoration = elementoDiv.style.textDecoration === 'line-through' ? 'none' : 'line-through';
+            elementoDiv.style.opacity = elementoDiv.style.textDecoration === 'line-through' ? '0.4' : '1';
+        }
+
+        function formatarItensAgrupados(itens) {
+            let contagem = {};
+            itens.forEach(item => {
+                let chave = item.nome + '|' + (item.observacao || '') + '|' + (item.adicionais ? item.adicionais.sort().join() : '');
+                if (!contagem[chave]) contagem[chave] = { ...item, qtd: 1 };
+                else { contagem[chave].qtd += 1; contagem[chave].valor += item.valor; }
+            });
+            return Object.values(contagem);
+        }
+
+        function renderFilaPreparo() {
+            const container = document.getElementById('listaFilaPreparo');
+            if(filaPreparo.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500 font-bold uppercase text-xs">Nenhum pedido pendente.</div>`;
+                return;
+            }
+
+            let html = '';
+            filaPreparo.forEach((pedido) => {
+                let detalheItens = '';
+                formatarItensAgrupados(pedido.itens).forEach((it, i) => {
+                    let adicHtml = it.adicionais && it.adicionais.length > 0 ? `<div class="text-amber-300 font-bold mt-1 bg-amber-950/60 p-1.5 rounded text-[11px]">🧀 + Adicionais: ${formatarAdicionaisAgrupados(it.adicionais)}</div>` : '';
+                    let obsHtml = it.observacao ? `<div class="text-amber-300 font-bold mt-1 bg-amber-950/60 p-1.5 rounded text-[11px]">⚠️ Obs: ${it.observacao}</div>` : '';
+                    detalheItens += `
+                        <div onclick="alternarRiscoItem(this)" class="bg-black/60 p-3 rounded-xl text-xs mb-2 border border-gray-800 cursor-pointer">
+                            <span class="font-bold text-amber-400 text-sm">${i+1}. ${it.qtd > 1 ? it.qtd + 'x ' : ''}${it.nome}</span>
+                            ${adicHtml} ${obsHtml}
+                        </div>
+                    `;
+                });
+
+                let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'Dinheiro' : (pedido.formaPagamento === 'cartao' ? 'Cartão' : 'Pagar na Retirada'));
+
+                html += `
+                    <div class="glass-card rounded-2xl p-4">
+                        <div class="flex justify-between items-center border-b border-gray-800 pb-2 mb-3">
+                            <div>
+                                <span class="font-impact text-lg text-white">${pedido.cliente}</span>
+                                <div class="flex items-center gap-1.5 mt-0.5">
+                                    <span class="text-[9px] font-black px-2 py-0.5 rounded-full border border-gray-700 bg-gray-800 text-gray-300">${pedido.tipoAtendimento || 'Local'}</span>
+                                    <span class="text-[10px] text-gray-400 font-bold">${pedido.hora} - ${pagTag}</span>
+                                </div>
+                            </div>
+                            <span class="font-impact text-2xl text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div class="mb-3">${detalheItens}</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="editarPedidoFila('${pedido.id}')" class="bg-amber-600 text-black py-3 rounded-xl font-impact uppercase text-xs font-bold">EDITAR</button>
+                            <button type="button" onclick="concluirPedidoFila('${pedido.id}', '${pedido.formaPagamento}', '${pedido.cliente}')" class="bg-emerald-600 text-white py-3 rounded-xl font-impact uppercase text-xs">CONCLUIR</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function editarPedidoFila(id) {
+            const index = filaPreparo.findIndex(p => p.id === id);
+            if(index === -1) return;
+            const pedido = filaPreparo[index];
+            carrinhoNany = [...pedido.itens];
+            document.getElementById('nomeCliente').value = pedido.cliente === 'Cliente' ? '' : pedido.cliente;
+            formaPagamentoAtual = pedido.formaPagamento;
+
+            filaPreparo.splice(index, 1);
+            salvarDadosNuvem();
+            trocarAba('tab-pedido', document.querySelectorAll('.nav-btn')[0]);
+            atualizarCarrinhoTela();
+        }
+
+        function concluirPedidoFila(id, formaAtual, clienteNome) {
+            if (formaAtual === 'retirada') {
+                pedidoPendenteConclusaoId = id;
+                document.getElementById('modalClienteTexto').innerText = `Cliente: ${clienteNome}`;
+                document.getElementById('modalPagamento').classList.remove('hidden');
+                return;
+            }
+            finalizarEEnviarHistorico(id, formaAtual);
+        }
+
+        function confirmarFormaModal(novaForma) {
+            if (!pedidoPendenteConclusaoId) return;
+            finalizarEEnviarHistorico(pedidoPendenteConclusaoId, novaForma);
+            fecharModal();
+        }
+
+        function fecharModal() {
+            document.getElementById('modalPagamento').classList.add('hidden');
+            pedidoPendenteConclusaoId = null;
+        }
+
+        function finalizarEEnviarHistorico(id, formaFinal) {
+            const index = filaPreparo.findIndex(p => p.id === id);
+            if(index === -1) return;
+            const pedido = filaPreparo[index];
+            pedido.formaPagamento = formaFinal;
+            filaPreparo.splice(index, 1);
+            historico.push(pedido);
+            salvarDadosNuvem();
+        }
+
+        function renderHistorico() {
+            const container = document.getElementById('listaHistorico');
+            if(historico.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-gray-500 font-bold uppercase text-xs">Nenhum pedido no histórico.</div>`;
+                return;
+            }
+            let html = '';
+            historico.slice().reverse().forEach((pedido) => {
+                let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'Dinheiro' : 'Cartão');
+                html += `
+                    <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-3 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-white text-sm">${pedido.cliente} (${pedido.tipoAtendimento || 'Local'})</span>
+                            <span class="text-[10px] text-gray-400 block">${pedido.hora} - ${pedido.itens.length} item(ns) - ${pagTag}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-impact text-base text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
+                            <button type="button" onclick="deletarPedidoHistorico('${pedido.id}')" class="bg-red-950 border border-red-600 text-red-300 px-2 py-1.5 rounded-lg text-[11px] font-bold">[X]</button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function deletarPedidoHistorico(id) {
+            if(confirm("Apagar pedido? O caixa será recalculado.")) {
+                historico = historico.filter(p => p.id !== id);
+                salvarDadosNuvem();
+            }
+        }
+
+        function limparHistorico() {
+            if(confirm("Zerar caixa e histórico?")) {
+                historico = [];
+                salvarDadosNuvem();
+            }
+        }
+
+        function trocarAba(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if(btn) btn.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if(tabId === 'tab-preparo') renderFilaPreparo();
+            if(tabId === 'tab-historico') renderHistorico();
+            if(tabId === 'tab-relatorio') renderRelatorios();
+        }
+
+        function renderRelatorios() {
+            let totalPix = 0, totalDinheiro = 0, totalCartao = 0;
+            historico.forEach(pedido => {
+                if(pedido.formaPagamento === 'pix') totalPix += pedido.total;
+                else if(pedido.formaPagamento === 'dinheiro') totalDinheiro += pedido.total;
+                else if(pedido.formaPagamento === 'cartao' || pedido.formaPagamento === 'retirada') totalCartao += pedido.total;
+            });
+            let totalGeral = totalPix + totalDinheiro + totalCartao;
+            document.getElementById('faturamentoPix').innerText = `R$ ${totalPix.toFixed(2).replace('.', ',')}`;
+            document.getElementById('faturamentoDinheiro').innerText = `R$ ${totalDinheiro.toFixed(2).replace('.', ',')}`;
+            document.getElementById('faturamentoCartao').innerText = `R$ ${totalCartao.toFixed(2).replace('.', ',')}`;
+            document.getElementById('faturamentoTotal').innerText = `R$ ${totalGeral.toFixed(2).replace('.', ',')}`;
+        }
+    </script>
+</body>
+</html>

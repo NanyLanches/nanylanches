@@ -359,7 +359,6 @@
 
     <!-- JS DO SISTEMA COM REALTIME DATABASE -->
     <script>
-        // ======= CONFIGURAÇÃO DO FIREBASE (REALTIME DATABASE) =======
         const firebaseConfig = {
             apiKey: "AIzaSyCEVLzIbzQDP2ftBhDXYRuaux9bstOsj9U",
             authDomain: "nanylanchespvd.firebaseapp.com",
@@ -370,7 +369,6 @@
             appId: "1:572645772317:web:637505939d79be9c5a8af4",
             measurementId: "G-GJW20SM13L"
         };
-        // ============================================================
 
         firebase.initializeApp(firebaseConfig);
         const rtdb = firebase.database();
@@ -484,7 +482,6 @@
 
         carregarCatalogoCategorias();
 
-        // ESCUTAR MUDANÇAS EM TEMPO REAL NO REALTIME DATABASE
         rtdb.ref('nany_dados').on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
@@ -711,7 +708,7 @@
 
                 cancelarPedidoCompleto();
                 salvarDadosNuvem();
-                alert("Comanda atualizada!");
+                alert("Comanda do histórico atualizada com sucesso!");
                 trocarAba('tab-historico', document.querySelectorAll('.nav-btn')[2]);
                 return;
             }
@@ -866,7 +863,7 @@
             }
             let html = '';
             historico.slice().reverse().forEach((pedido) => {
-                let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'Dinheiro' : 'Cartão');
+                let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'Dinheiro' : (pedido.formaPagamento === 'cartao' ? 'Cartão' : 'Pagar na Retirada'));
                 html += `
                     <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-3 flex justify-between items-center text-xs">
                         <div>
@@ -875,12 +872,55 @@
                         </div>
                         <div class="flex items-center gap-1.5">
                             <span class="font-impact text-base text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
+                            <button type="button" onclick="editarPedidoHistorico('${pedido.id}')" title="Adicionar mais itens / Editar" class="bg-amber-600 border border-amber-400 text-black px-2.5 py-1.5 rounded-lg hover:bg-amber-500 active:scale-95 transition font-bold text-[11px]">
+                                +EDITAR
+                            </button>
                             <button type="button" onclick="deletarPedidoHistorico('${pedido.id}')" class="bg-red-950 border border-red-600 text-red-300 px-2 py-1.5 rounded-lg text-[11px] font-bold">[X]</button>
                         </div>
                     </div>
                 `;
             });
             container.innerHTML = html;
+        }
+
+        function editarPedidoHistorico(id) {
+            const index = historico.findIndex(p => p.id === id);
+            if(index === -1) return;
+            const pedido = historico[index];
+
+            carrinhoNany = [...pedido.itens];
+            document.getElementById('nomeCliente').value = pedido.cliente === 'Cliente' ? '' : pedido.cliente;
+            document.getElementById('editandoHistoricoId').value = pedido.id;
+            document.getElementById('horaOriginalEdicao').value = pedido.hora;
+            document.getElementById('nomeClienteEditando').innerText = pedido.cliente;
+            document.getElementById('avisoModoEdicao').classList.remove('hidden');
+            document.getElementById('btnEnviarTexto').innerText = 'ATUALIZAR COMANDA';
+
+            if (pedido.tipoAtendimento) {
+                tipoAtendimentoAtual = pedido.tipoAtendimento;
+                const btnsAtend = document.querySelectorAll('.btn-atendimento');
+                btnsAtend.forEach(b => {
+                    if(b.innerText.toLowerCase().includes(tipoAtendimentoAtual.toLowerCase().split(' ')[0])) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+            }
+
+            formaPagamentoAtual = pedido.formaPagamento;
+            const btnsPag = document.querySelectorAll('.btn-pagamento');
+            btnsPag.forEach(b => b.classList.remove('active'));
+            if(formaPagamentoAtual === 'pix') btnsPag[0]?.classList.add('active');
+            if(formaPagamentoAtual === 'dinheiro') btnsPag[1]?.classList.add('active');
+            if(formaPagamentoAtual === 'cartao') btnsPag[2]?.classList.add('active');
+            if(formaPagamentoAtual === 'retirada') btnsPag[3]?.classList.add('active');
+
+            historico.splice(index, 1);
+            salvarDadosNuvem();
+
+            trocarAba('tab-pedido', document.querySelectorAll('.nav-btn')[0]);
+            atualizarCarrinhoTela();
         }
 
         function deletarPedidoHistorico(id) {

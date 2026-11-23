@@ -142,9 +142,15 @@
 </head>
 <body class="p-3 md:p-6 max-w-3xl mx-auto">
 
-    <!-- CABEÇALHO -->
-    <header class="text-center my-3">
+    <!-- CABEÇALHO COM BOTÃO DE CONEXÃO BLUETOOTH DIRETA -->
+    <header class="text-center my-3 relative">
         <h1 class="font-impact text-3xl text-amber-500 tracking-wider drop-shadow-[0_4px_8px_rgba(0,0,0,1)]">NANY LANCHES</h1>
+        <div class="mt-2">
+            <button type="button" onclick="conectarImpressoraBluetooth()" id="btnConectarBt" class="bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl uppercase shadow transition border border-sky-400">
+                🖨️ Conectar Impressora Bluetooth
+            </button>
+            <span id="statusBt" class="text-[10px] text-red-400 block mt-1 font-bold">Impressora Desconectada</span>
+        </div>
     </header>
 
     <!-- ABA 1: NOVO PEDIDO -->
@@ -562,7 +568,7 @@
         </button>
     </nav>
 
-    <!-- JS DO SISTEMA COM REALTIME DATABASE -->
+    <!-- JS DO SISTEMA COM WEB BLUETOOTH DIRETO -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCEVLzIbzQDP2ftBhDXYRuaux9bstOsj9U",
@@ -578,8 +584,79 @@
         firebase.initializeApp(firebaseConfig);
         const rtdb = firebase.database();
 
-        // URL DO GOOGLE APPS SCRIPT
         const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzFsNhLo0guR5EqTOIeYtH8RlH8XiiWO-HrjMnwp8G6Qtrx0FWu1kcULvG1E6FLwtpP/exec";
+
+        // VARIÁVEIS PARA CONEXÃO BLUETOOTH DIRETA
+        let bluetoothDevice = null;
+        let bluetoothCharacteristic = null;
+
+        async function conectarImpressoraBluetooth() {
+            try {
+                const statusEl = document.getElementById('statusBt');
+                statusEl.innerText = "Buscando dispositivo...";
+                
+                // Solicita pareamento com qualquer dispositivo Bluetooth próximo
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455', '0000ff00-0000-1000-8000-00805f9b34fb']
+                });
+
+                const server = await bluetoothDevice.gatt.connect();
+                const services = await server.getPrimaryServices();
+                
+                for (let service of services) {
+                    const characteristics = await service.getCharacteristics();
+                    for (let characteristic of characteristics) {
+                        if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+                            bluetoothCharacteristic = characteristic;
+                            break;
+                        }
+                    }
+                    if (bluetoothCharacteristic) break;
+                }
+
+                if (!bluetoothCharacteristic && services.length > 0) {
+                    const chars = await services[0].getCharacteristics();
+                    if (chars.length > 0) bluetoothCharacteristic = chars[0];
+                }
+
+                if (bluetoothCharacteristic) {
+                    statusEl.innerText = `Conectada (${bluetoothDevice.name || 'Celark'})`;
+                    statusEl.className = "text-[10px] text-emerald-400 block mt-1 font-bold";
+                    alert("Impressora conectada com sucesso!");
+                } else {
+                    throw new Error("Característica de escrita não encontrada na impressora.");
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('statusBt').innerText = "Desconectada / Erro";
+                document.getElementById('statusBt').className = "text-[10px] text-red-400 block mt-1 font-bold";
+                alert("Falha ao conectar: " + error.message);
+            }
+        }
+
+        async function imprimirViaBluetoothDireto(texto) {
+            if (!bluetoothCharacteristic) {
+                alert("Atenção: A impressora não está conectada! Clique em 'Conectar Impressora' no topo.");
+                return;
+            }
+            try {
+                const encoder = new TextEncoder('utf-8');
+                const data = encoder.encode(texto);
+                
+                const chunkSize = 512;
+                for (let i = 0; i < data.length; i += chunkSize) {
+                    let chunk = data.slice(i, i + chunkSize);
+                    await bluetoothCharacteristic.writeValue(chunk);
+                }
+            } catch (err) {
+                console.error("Erro ao enviar dados Bluetooth:", err);
+                alert("Erro ao enviar para a impressora. Reconecte o Bluetooth.");
+                document.getElementById('statusBt').innerText = "Desconectada";
+                document.getElementById('statusBt').className = "text-[10px] text-red-400 block mt-1 font-bold";
+                bluetoothCharacteristic = null;
+            }
+        }
 
         const lanchesLista = [
             { nome: 'Misto Quente', preco: 15.00 },
@@ -716,6 +793,47 @@
             }).catch((error) => {
                 console.error("Erro ao salvar no Realtime Database: ", error);
             });
+        }
+
+        function montarTextoComanda(pedido) {
+            let setor = pedido.tipoDestino ? pedido.tipoDestino.toUpperCase() : 'COZINHA';
+            let texto = "================================\n";
+            texto += "          NANY LANCHES          \n";
+            texto += `        SETOR: ${setor}         \n`;
+            texto += "================================\n";
+            texto += `Pedido #${String(pedido.id).slice(-4)}\n`;
+            texto += `Cliente: ${pedido.cliente}\n`;
+            texto += `Tipo: ${pedido.tipoAtendimento || 'Comer no Local'}\n`;
+            texto += `Horario: ${pedido.hora}\n`;
+            texto += "--------------------------------\n";
+            texto += "ITENS DO PEDIDO:\n";
+
+            const itensAgrupados = formatarItensAgrupados(pedido.itens);
+            itensAgrupados.forEach(item => {
+                let qtdTexto = item.qtd > 1 ? `${item.qtd}x ` : '';
+                texto += `> ${qtdTexto}${item.nome}\n`;
+                if (item.adicionais && item.adicionais.length > 0) {
+                    texto += `   + ${formatarAdicionaisAgrupados(item.adicionais)}\n`;
+                }
+                if (item.observacao) {
+                    texto += `   Obs: ${item.observacao}\n`;
+                }
+            });
+
+            texto += "--------------------------------\n";
+            let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'DINHEIRO' : (pedido.formaPagamento === 'cartao' ? 'CARTAO' : 'PAGAR NA RETIRADA'));
+            texto += `PAGAMENTO: ${pagTag}\n`;
+            texto += `TOTAL: R$ ${pedido.total.toFixed(2).replace('.', ',')}\n`;
+            texto += "================================\n\n\n";
+            return texto;
+        }
+
+        function reimprimirPedidoFila(id) {
+            const pedido = filaPreparo.find(p => p.id === id);
+            if (pedido) {
+                const texto = montarTextoComanda(pedido);
+                imprimirViaBluetoothDireto(texto);
+            }
         }
 
         function abrirModalAberturaCaixa() {
@@ -959,27 +1077,8 @@
             const horaFormatada = horaOriginal || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const valorTotalVenda = carrinhoNany.reduce((sum, item) => sum + item.valor, 0);
 
-            if (editandoId) {
-                filaPreparo.push({
-                    id: editandoId,
-                    cliente: nomeCliente,
-                    tipoDestino: destino,
-                    tipoAtendimento: tipoAtendimentoAtual,
-                    hora: horaFormatada,
-                    itens: [...carrinhoNany],
-                    total: valorTotalVenda,
-                    formaPagamento: formaPagamentoAtual
-                });
-
-                cancelarPedidoCompleto();
-                salvarDadosNuvem();
-                alert("Pedido atualizado com sucesso!");
-                trocarAba('tab-preparo', document.querySelectorAll('.nav-btn')[1]);
-                return;
-            }
-
-            filaPreparo.push({
-                id: 'nany_' + Date.now(),
+            const novoPedido = {
+                id: editandoId || ('nany_' + Date.now()),
                 cliente: nomeCliente,
                 tipoDestino: destino,
                 tipoAtendimento: tipoAtendimentoAtual,
@@ -987,15 +1086,27 @@
                 itens: [...carrinhoNany],
                 total: valorTotalVenda,
                 formaPagamento: formaPagamentoAtual
-            });
+            };
 
+            filaPreparo.push(novoPedido);
             salvarDadosNuvem();
+            
+            // Imprime direto via Bluetooth sem abrir apps externos
+            const textoComanda = montarTextoComanda(novoPedido);
+            imprimirViaBluetoothDireto(textoComanda);
+
+            if (editandoId) {
+                cancelarPedidoCompleto();
+                trocarAba('tab-preparo', document.querySelectorAll('.nav-btn')[1]);
+                return;
+            }
+
             cancelarPedidoCompleto();
-            alert(destino === 'cozinha' ? "Pedido enviado para a Cozinha!" : "Pedido enviado para a Adega!");
         }
 
         function cancelarPedidoCompleto() {
             carrinhoNany = [];
+            document.getElementById('nomeCliente').value = '';
             document.getElementById('editandoHistoricoId').value = '';
             document.getElementById('horaOriginalEdicao').value = '';
             document.getElementById('avisoModoEdicao').classList.add('hidden');
@@ -1023,7 +1134,7 @@
         function formatarItensAgrupados(itens) {
             let contagem = {};
             itens.forEach(item => {
-                let chave = item.nome + '|' + (item.observacao || '') + '|' + (item.adicionais ? item.adicionais.sort().join() : '');
+                let chave = item.nome + '|' + (item.observacao || '') + '|' + (item.adicionais ? [...item.adicionais].sort().join() : '');
                 if (!contagem[chave]) contagem[chave] = { ...item, qtd: 1 };
                 else { contagem[chave].qtd += 1; contagem[chave].valor += item.valor; }
             });
@@ -1071,9 +1182,10 @@
                             <span class="font-impact text-2xl text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
                         </div>
                         <div class="mb-3">${detalheItens}</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button type="button" onclick="editarPedidoFila('${pedido.id}')" class="bg-amber-600 text-black py-3 rounded-xl font-impact uppercase text-xs font-bold">EDITAR</button>
-                            <button type="button" onclick="concluirPedidoFila('${pedido.id}', '${pedido.formaPagamento}', '${pedido.cliente}')" class="bg-emerald-600 text-white py-3 rounded-xl font-impact uppercase text-xs">CONCLUIR</button>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button type="button" onclick="reimprimirPedidoFila('${pedido.id}')" class="bg-sky-700 hover:bg-sky-600 text-white py-3 rounded-xl font-impact uppercase text-xs font-bold">IMPRIMIR</button>
+                            <button type="button" onclick="editarPedidoFila('${pedido.id}')" class="bg-amber-600 hover:bg-amber-500 text-black py-3 rounded-xl font-impact uppercase text-xs font-bold">EDITAR</button>
+                            <button type="button" onclick="concluirPedidoFila('${pedido.id}', '${pedido.formaPagamento}', '${pedido.cliente}')" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-impact uppercase text-xs">CONCLUIR</button>
                         </div>
                     </div>
                 `;
@@ -1379,7 +1491,6 @@
             document.getElementById('modal-sub-adega').innerHTML = htmlAdegaModal || `<div class="text-gray-500 italic text-center py-2">Nenhuma bebida registrada.</div>`;
         }
 
-        // FUNÇÃO PARA ENVIAR O RESUMO DO FECHAMENTO DIÁRIO PARA A PLANILHA DO GOOGLE
         function enviarFechamentoPlanilha() {
             let totalPix = 0, totalDinheiro = 0, totalCartao = 0;
             let totalLanches = 0, totalAdega = 0, totalAcai = 0;

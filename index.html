@@ -568,7 +568,7 @@
         </button>
     </nav>
 
-    <!-- JS DO SISTEMA COM WEB BLUETOOTH DIRETO -->
+    <!-- JS DO SISTEMA COM WEB BLUETOOTH E RECONEXÃO AUTOMÁTICA -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCEVLzIbzQDP2ftBhDXYRuaux9bstOsj9U",
@@ -586,7 +586,6 @@
 
         const URL_GOOGLE_SHEETS = "https://script.google.com/macros/s/AKfycbzFsNhLo0guR5EqTOIeYtH8RlH8XiiWO-HrjMnwp8G6Qtrx0FWu1kcULvG1E6FLwtpP/exec";
 
-        // VARIÁVEIS PARA CONEXÃO BLUETOOTH DIRETA
         let bluetoothDevice = null;
         let bluetoothCharacteristic = null;
 
@@ -595,38 +594,15 @@
                 const statusEl = document.getElementById('statusBt');
                 statusEl.innerText = "Buscando dispositivo...";
                 
-                // Solicita pareamento com qualquer dispositivo Bluetooth próximo
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455', '0000ff00-0000-1000-8000-00805f9b34fb']
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455', '0000ff00-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2']
                 });
 
-                const server = await bluetoothDevice.gatt.connect();
-                const services = await server.getPrimaryServices();
-                
-                for (let service of services) {
-                    const characteristics = await service.getCharacteristics();
-                    for (let characteristic of characteristics) {
-                        if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
-                            bluetoothCharacteristic = characteristic;
-                            break;
-                        }
-                    }
-                    if (bluetoothCharacteristic) break;
-                }
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
 
-                if (!bluetoothCharacteristic && services.length > 0) {
-                    const chars = await services[0].getCharacteristics();
-                    if (chars.length > 0) bluetoothCharacteristic = chars[0];
-                }
+                await efetuarConexaoGATT();
 
-                if (bluetoothCharacteristic) {
-                    statusEl.innerText = `Conectada (${bluetoothDevice.name || 'Celark'})`;
-                    statusEl.className = "text-[10px] text-emerald-400 block mt-1 font-bold";
-                    alert("Impressora conectada com sucesso!");
-                } else {
-                    throw new Error("Característica de escrita não encontrada na impressora.");
-                }
             } catch (error) {
                 console.error(error);
                 document.getElementById('statusBt').innerText = "Desconectada / Erro";
@@ -635,12 +611,55 @@
             }
         }
 
-        async function imprimirViaBluetoothDireto(texto) {
-            if (!bluetoothCharacteristic) {
-                alert("Atenção: A impressora não está conectada! Clique em 'Conectar Impressora' no topo.");
-                return;
+        async function efetuarConexaoGATT() {
+            const statusEl = document.getElementById('statusBt');
+            statusEl.innerText = "Conectando...";
+            
+            const server = await bluetoothDevice.gatt.connect();
+            const services = await server.getPrimaryServices();
+            
+            bluetoothCharacteristic = null;
+            for (let service of services) {
+                const characteristics = await service.getCharacteristics();
+                for (let characteristic of characteristics) {
+                    if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+                        bluetoothCharacteristic = characteristic;
+                        break;
+                    }
+                }
+                if (bluetoothCharacteristic) break;
             }
+
+            if (!bluetoothCharacteristic && services.length > 0) {
+                const chars = await services[0].getCharacteristics();
+                if (chars.length > 0) bluetoothCharacteristic = chars[0];
+            }
+
+            if (bluetoothCharacteristic) {
+                statusEl.innerText = `Conectada (${bluetoothDevice.name || 'Celark'})`;
+                statusEl.className = "text-[10px] text-emerald-400 block mt-1 font-bold";
+            } else {
+                throw new Error("Característica de escrita não encontrada.");
+            }
+        }
+
+        function onDisconnected() {
+            document.getElementById('statusBt').innerText = "Desconectada (Standby)";
+            document.getElementById('statusBt').className = "text-[10px] text-red-400 block mt-1 font-bold";
+            bluetoothCharacteristic = null;
+        }
+
+        async function imprimirViaBluetoothDireto(texto) {
             try {
+                if (!bluetoothCharacteristic && bluetoothDevice) {
+                    await efetuarConexaoGATT();
+                }
+
+                if (!bluetoothCharacteristic) {
+                    alert("Atenção: A impressora está desconectada. Clique em 'Conectar Impressora Bluetooth' no topo.");
+                    return;
+                }
+
                 const encoder = new TextEncoder('utf-8');
                 const data = encoder.encode(texto);
                 
@@ -651,10 +670,10 @@
                 }
             } catch (err) {
                 console.error("Erro ao enviar dados Bluetooth:", err);
-                alert("Erro ao enviar para a impressora. Reconecte o Bluetooth.");
                 document.getElementById('statusBt').innerText = "Desconectada";
                 document.getElementById('statusBt').className = "text-[10px] text-red-400 block mt-1 font-bold";
                 bluetoothCharacteristic = null;
+                alert("Erro ao enviar para a impressora. Reconecte o Bluetooth no topo.");
             }
         }
 
@@ -1091,7 +1110,7 @@
             filaPreparo.push(novoPedido);
             salvarDadosNuvem();
             
-            // Imprime direto via Bluetooth sem abrir apps externos
+            // Imprime direto via Bluetooth no notebook
             const textoComanda = montarTextoComanda(novoPedido);
             imprimirViaBluetoothDireto(textoComanda);
 

@@ -182,8 +182,20 @@
 
             <!-- SELEÇÃO DE CATEGORIAS DE PRODUTOS -->
             <div class="mb-5">
-                <div class="brand-title-box text-center py-1.5 px-4 rounded-xl text-sm uppercase mb-3 font-bold shadow-lg">
+                <div class="brand-title-box text-center py-1.5 px-4 rounded-xl text-sm uppercase mb-2 font-bold shadow-lg">
                     1. ESCOLHA O ITEM
+                </div>
+
+                <!-- SELETOR DE MULTIPLICADOR DE QUANTIDADE RÁPIDA -->
+                <div class="bg-black/80 p-2 rounded-xl border border-gray-800 mb-2 flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-black text-amber-400 uppercase pl-1">Qtd:</span>
+                    <div class="grid grid-cols-5 gap-1 flex-1 font-bold">
+                        <button type="button" onclick="setMultiplicadorQtd(1, this)" class="btn-qtd-mult active bg-amber-600 text-black py-1.5 rounded-lg text-xs transition">1x</button>
+                        <button type="button" onclick="setMultiplicadorQtd(2, this)" class="btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition">2x</button>
+                        <button type="button" onclick="setMultiplicadorQtd(3, this)" class="btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition">3x</button>
+                        <button type="button" onclick="setMultiplicadorQtd(5, this)" class="btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition">5x</button>
+                        <button type="button" onclick="setMultiplicadorQtd(10, this)" class="btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition">10x</button>
+                    </div>
                 </div>
 
                 <!-- Botões de Categoria -->
@@ -474,20 +486,67 @@
     <!-- MODAL SELECIONAR DESTINO AO ENVIAR -->
     <div id="modalDestinoEnvio" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card rounded-3xl p-6 w-full max-w-sm border-2 border-amber-500 text-center space-y-4">
-            <h3 class="font-impact text-2xl text-amber-400 uppercase">PARA ONDE VAI O PEDIDO?</h3>
-            <p class="text-xs text-gray-300">Escolha o setor que deve receber esta comanda:</p>
+            <h3 class="font-impact text-2xl text-amber-400 uppercase" id="tituloModalDestino">PARA ONDE VAI O PEDIDO?</h3>
+            <p class="text-xs text-gray-300" id="subtituloModalDestino">Escolha o destino ou se vai direto para o caixa:</p>
             
-            <div class="space-y-3 pt-2">
-                <button type="button" onclick="enviarParaDestinoFinal('cozinha')" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-impact py-3.5 rounded-xl uppercase text-base tracking-wider transition shadow-lg">
-                    COZINHA
+            <div class="space-y-2.5 pt-1">
+                <button type="button" onclick="selecionarSetorEnvio('cozinha')" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-impact py-3 rounded-xl uppercase text-sm tracking-wider transition shadow-lg">
+                    🍽️ ENVIAR PARA COZINHA
                 </button>
-                <button type="button" onclick="enviarParaDestinoFinal('adega')" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-impact py-3.5 rounded-xl uppercase text-base tracking-wider transition shadow-lg">
-                    ADEGA
+                <button type="button" onclick="selecionarSetorEnvio('adega')" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-impact py-3 rounded-xl uppercase text-sm tracking-wider transition shadow-lg">
+                    🍺 ENVIAR PARA ADEGA
+                </button>
+                <button type="button" onclick="vendaDiretaBalcao()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-black font-impact py-3 rounded-xl uppercase text-sm tracking-wider transition shadow-lg">
+                    💰 SALVAR DIRETO NO CAIXA (HISTÓRICO)
                 </button>
             </div>
 
-            <button type="button" onclick="fecharModalDestino()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-2.5 rounded-xl uppercase text-xs transition mt-2">
+            <button type="button" onclick="fecharModalDestino()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-2 rounded-xl uppercase text-xs transition mt-1">
                 CANCELAR
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL VER PEDIDO COMPLETO HISTÓRICO -->
+    <div id="modalVerPedidoHistorico" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-md border-2 border-amber-500 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                <h3 class="font-impact text-xl text-amber-400 uppercase">DETALHES DO PEDIDO</h3>
+                <button type="button" onclick="fecharModalVerPedido()" class="text-red-400 font-bold text-base px-2">[X]</button>
+            </div>
+            
+            <div id="conteudoDetalhesPedidoHistorico" class="space-y-2 text-xs">
+                <!-- Conteúdo injetado via JS -->
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="reimprimirPedidoHistoricoModal()" class="bg-sky-700 hover:bg-sky-600 text-white font-bold py-3 rounded-xl uppercase text-xs transition font-impact tracking-wider">
+                    🖨️ IMPRIMIR
+                </button>
+                <button type="button" onclick="fecharModalVerPedido()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-3 rounded-xl uppercase text-xs transition">
+                    FECHAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL MODO DE ENVIO (IMPRIMIR OU SÓ SISTEMA/CELULAR) -->
+    <div id="modalModoImpressao" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card rounded-3xl p-6 w-full max-w-sm border-2 border-sky-500 text-center space-y-4">
+            <h3 class="font-impact text-2xl text-sky-400 uppercase">COMO DESEJA ENVIAR?</h3>
+            <p class="text-xs text-gray-300">Setor selecionado: <strong id="textoSetorSelecionado" class="text-amber-400 uppercase">COZINHA</strong></p>
+            
+            <div class="space-y-3 pt-2">
+                <button type="button" onclick="confirmarEnvioComModo(true)" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-impact py-3.5 rounded-xl uppercase text-base tracking-wider transition shadow-lg">
+                    🖨️ IMPRIMIR + SISTEMA
+                </button>
+                <button type="button" onclick="confirmarEnvioComModo(false)" class="w-full bg-emerald-600 hover:bg-emerald-500 text-black font-impact py-3.5 rounded-xl uppercase text-base tracking-wider transition shadow-lg">
+                    📱 SÓ SISTEMA (VER NO CELULAR)
+                </button>
+            </div>
+
+            <button type="button" onclick="voltarParaSetor()" class="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 font-bold py-2.5 rounded-xl uppercase text-xs transition mt-2">
+                VOLTAR
             </button>
         </div>
     </div>
@@ -984,25 +1043,51 @@
             });
         }
 
+        let multiplicadorQtdAtual = 1;
+
+        function setMultiplicadorQtd(qtd, btn) {
+            multiplicadorQtdAtual = qtd;
+            document.querySelectorAll('.btn-qtd-mult').forEach(b => {
+                b.className = "btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition";
+            });
+            btn.className = "btn-qtd-mult active bg-amber-600 text-black py-1.5 rounded-lg text-xs transition font-black";
+        }
+
         function adicionarDiretoCarrinho(nome, preco, categoria) {
             if ((categoria === 'adicional' || categoria === 'adicional-acai') && carrinhoNany.length === 0) {
                 alert("Adicione um item principal primeiro!");
                 return;
             }
 
+            const qtdParaAdicionar = multiplicadorQtdAtual;
+
             if (categoria === 'adicional' || categoria === 'adicional-acai') {
                 let ultimoItem = carrinhoNany[carrinhoNany.length - 1];
-                ultimoItem.adicionais.push(nome);
-                ultimoItem.valor += preco;
+                for(let i = 0; i < qtdParaAdicionar; i++) {
+                    ultimoItem.adicionais.push(nome);
+                    ultimoItem.valor += preco;
+                }
             } else {
-                carrinhoNany.push({
-                    nome: nome,
-                    categoria: categoria,
-                    adicionais: [],
-                    observacao: '',
-                    valor: preco
-                });
+                for(let i = 0; i < qtdParaAdicionar; i++) {
+                    carrinhoNany.push({
+                        nome: nome,
+                        categoria: categoria,
+                        adicionais: [],
+                        observacao: '',
+                        valor: preco
+                    });
+                }
             }
+
+            // Resetar multiplicador para 1x após adicionar
+            multiplicadorQtdAtual = 1;
+            document.querySelectorAll('.btn-qtd-mult').forEach((b, idx) => {
+                if(idx === 0) {
+                    b.className = "btn-qtd-mult active bg-amber-600 text-black py-1.5 rounded-lg text-xs transition font-black";
+                } else {
+                    b.className = "btn-qtd-mult bg-gray-800 text-gray-300 py-1.5 rounded-lg text-xs transition";
+                }
+            });
 
             atualizarCarrinhoTela();
         }
@@ -1133,6 +1218,8 @@
             displayTroco.className = troco < 0 ? "font-impact text-sm text-red-400 font-bold" : "font-impact text-xl text-emerald-400";
         }
 
+        let destinoSelecionadoTemp = 'cozinha';
+
         function clicarEnviar() {
             if (carrinhoNany.length === 0) { alert("Adicione pelo menos 1 item!"); return; }
             document.getElementById('modalDestinoEnvio').classList.remove('hidden');
@@ -1142,8 +1229,24 @@
             document.getElementById('modalDestinoEnvio').classList.add('hidden');
         }
 
-        function enviarParaDestinoFinal(destino) {
+        function selecionarSetorEnvio(destino) {
+            destinoSelecionadoTemp = destino;
             fecharModalDestino();
+            document.getElementById('textoSetorSelecionado').innerText = destino.toUpperCase();
+            document.getElementById('modalModoImpressao').classList.remove('hidden');
+        }
+
+        function voltarParaSetor() {
+            document.getElementById('modalModoImpressao').classList.add('hidden');
+            document.getElementById('modalDestinoEnvio').classList.remove('hidden');
+        }
+
+        function confirmarEnvioComModo(deveImprimir) {
+            document.getElementById('modalModoImpressao').classList.add('hidden');
+            enviarParaDestinoFinal(destinoSelecionadoTemp, deveImprimir);
+        }
+
+        function enviarParaDestinoFinal(destino, deveImprimir) {
             const nomeCliente = document.getElementById('nomeCliente').value.trim() || 'Cliente';
             const editandoId = document.getElementById('editandoHistoricoId').value;
             const horaOriginal = document.getElementById('horaOriginalEdicao').value;
@@ -1164,9 +1267,10 @@
             filaPreparo.push(novoPedido);
             salvarDadosNuvem();
             
-            // Imprime direto via Bluetooth no notebook
-            const textoComanda = montarTextoComanda(novoPedido);
-            imprimirViaBluetoothDireto(textoComanda);
+            if (deveImprimir) {
+                const textoComanda = montarTextoComanda(novoPedido);
+                imprimirViaBluetoothDireto(textoComanda);
+            }
 
             if (editandoId) {
                 cancelarPedidoCompleto();
@@ -1175,6 +1279,42 @@
             }
 
             cancelarPedidoCompleto();
+        }
+
+        function vendaDiretaBalcao() {
+            fecharModalDestino();
+            const nomeCliente = document.getElementById('nomeCliente').value.trim() || 'Balcao';
+            const editandoId = document.getElementById('editandoHistoricoId').value;
+            const horaOriginal = document.getElementById('horaOriginalEdicao').value;
+            const horaFormatada = horaOriginal || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const valorTotalVenda = carrinhoNany.reduce((sum, item) => sum + item.valor, 0);
+
+            const novaVenda = {
+                id: editandoId || ('balcao_' + Date.now()),
+                cliente: nomeCliente,
+                tipoDestino: 'balcao',
+                tipoAtendimento: tipoAtendimentoAtual,
+                hora: horaFormatada,
+                itens: [...carrinhoNany],
+                total: valorTotalVenda,
+                formaPagamento: formaPagamentoAtual
+            };
+
+            // Pergunta se deseja imprimir o cupom
+            if (confirm("Deseja imprimir o cupom para esta venda?")) {
+                const textoComanda = montarTextoComanda(novaVenda);
+                imprimirViaBluetoothDireto(textoComanda);
+            }
+
+            historico.push(novaVenda);
+            salvarDadosNuvem();
+            cancelarPedidoCompleto();
+
+            if (editandoId) {
+                trocarAba('tab-historico', document.querySelectorAll('.nav-btn')[2]);
+            } else {
+                alert("Venda direta registrada no caixa com sucesso!");
+            }
         }
 
         function cancelarPedidoCompleto() {
@@ -1255,10 +1395,11 @@
                             <span class="font-impact text-2xl text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
                         </div>
                         <div class="mb-3">${detalheItens}</div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" onclick="reimprimirPedidoFila('${pedido.id}')" class="bg-sky-700 hover:bg-sky-600 text-white py-3 rounded-xl font-impact uppercase text-xs font-bold">IMPRIMIR</button>
-                            <button type="button" onclick="editarPedidoFila('${pedido.id}')" class="bg-amber-600 hover:bg-amber-500 text-black py-3 rounded-xl font-impact uppercase text-xs font-bold">EDITAR</button>
-                            <button type="button" onclick="concluirPedidoFila('${pedido.id}', '${pedido.formaPagamento}', '${pedido.cliente}')" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-impact uppercase text-xs">CONCLUIR</button>
+                        <div class="grid grid-cols-4 gap-1.5">
+                            <button type="button" onclick="reimprimirPedidoFila('${pedido.id}')" class="bg-sky-700 hover:bg-sky-600 text-white py-3 rounded-xl font-impact uppercase text-[11px] font-bold">IMPRIMIR</button>
+                            <button type="button" onclick="editarPedidoFila('${pedido.id}')" class="bg-amber-600 hover:bg-amber-500 text-black py-3 rounded-xl font-impact uppercase text-[11px] font-bold">EDITAR</button>
+                            <button type="button" onclick="concluirPedidoFila('${pedido.id}', '${pedido.formaPagamento}', '${pedido.cliente}')" class="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-impact uppercase text-[11px]">CONCLUIR</button>
+                            <button type="button" onclick="apagarPedidoFila('${pedido.id}', '${pedido.cliente}')" class="bg-red-800 hover:bg-red-700 text-red-100 border border-red-500 py-3 rounded-xl font-impact uppercase text-[11px] font-bold">APAGAR</button>
                         </div>
                     </div>
                 `;
@@ -1314,6 +1455,13 @@
             atualizarCarrinhoTela();
         }
 
+        function apagarPedidoFila(id, clienteNome) {
+            if (confirm(`Deseja realmente APAGAR o pedido de ${clienteNome} da fila? Ele não irá para o caixa.`)) {
+                filaPreparo = filaPreparo.filter(p => p.id !== id);
+                salvarDadosNuvem();
+            }
+        }
+
         function concluirPedidoFila(id, formaAtual, clienteNome) {
             if (formaAtual === 'retirada') {
                 pedidoPendenteConclusaoId = id;
@@ -1362,6 +1510,7 @@
                         </div>
                         <div class="flex items-center gap-1.5">
                             <span class="font-impact text-base text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
+                            <button type="button" onclick="verPedidoCompletoHistorico('${pedido.id}')" class="bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1.5 rounded-lg font-bold text-[11px] uppercase transition">VER</button>
                             <button type="button" onclick="editarPedidoHistorico('${pedido.id}')" title="Adicionar mais itens / Editar" class="bg-amber-600 border border-amber-400 text-black px-2.5 py-1.5 rounded-lg hover:bg-amber-500 active:scale-95 transition font-bold text-[11px]">
                                 +EDITAR
                             </button>
@@ -1371,6 +1520,63 @@
                 `;
             });
             container.innerHTML = html;
+        }
+
+        let pedidoVisualizandoId = null;
+
+        function verPedidoCompletoHistorico(id) {
+            const pedido = historico.find(p => p.id === id);
+            if (!pedido) return;
+            pedidoVisualizandoId = id;
+
+            let itensHtml = '';
+            formatarItensAgrupados(pedido.itens).forEach((it, i) => {
+                let adicHtml = it.adicionais && it.adicionais.length > 0 ? `<div class="text-amber-300 font-bold mt-1 bg-amber-950/60 p-1 rounded text-[11px]">+ Adicionais: ${formatarAdicionaisAgrupados(it.adicionais)}</div>` : '';
+                let obsHtml = it.observacao ? `<div class="text-amber-300 font-bold mt-1 bg-amber-950/60 p-1 rounded text-[11px]">Obs: ${it.observacao}</div>` : '';
+                itensHtml += `
+                    <div class="bg-black/80 p-2.5 rounded-xl border border-gray-800 space-y-1">
+                        <span class="font-bold text-white text-sm">${i+1}. ${it.qtd > 1 ? it.qtd + 'x ' : ''}${it.nome}</span>
+                        <span class="font-bold text-amber-400 block">R$ ${it.valor.toFixed(2).replace('.', ',')}</span>
+                        ${adicHtml} ${obsHtml}
+                    </div>
+                `;
+            });
+
+            let pagTag = pedido.formaPagamento === 'pix' ? 'PIX' : (pedido.formaPagamento === 'dinheiro' ? 'Dinheiro' : (pedido.formaPagamento === 'cartao' ? 'Cartão' : 'Pagar na Retirada'));
+
+            document.getElementById('conteudoDetalhesPedidoHistorico').innerHTML = `
+                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800 space-y-1 text-gray-300 mb-3">
+                    <div><strong>Cliente:</strong> <span class="text-white">${pedido.cliente}</span></div>
+                    <div><strong>Atendimento:</strong> <span class="text-white">${pedido.tipoAtendimento || 'Local'}</span></div>
+                    <div><strong>Horário:</strong> <span class="text-white">${pedido.hora}</span></div>
+                    <div><strong>Pagamento:</strong> <span class="text-white">${pagTag}</span></div>
+                    <div><strong>Setor/Destino:</strong> <span class="text-amber-400 uppercase">${pedido.tipoDestino || 'Balcão'}</span></div>
+                </div>
+                <div class="space-y-2 mb-3">
+                    <span class="block font-black text-amber-400 uppercase">Itens do Pedido:</span>
+                    ${itensHtml}
+                </div>
+                <div class="flex justify-between items-center bg-amber-950/40 p-3 rounded-xl border border-amber-500">
+                    <span class="font-impact text-lg text-white">TOTAL:</span>
+                    <span class="font-impact text-2xl text-amber-400">R$ ${pedido.total.toFixed(2).replace('.', ',')}</span>
+                </div>
+            `;
+
+            document.getElementById('modalVerPedidoHistorico').classList.remove('hidden');
+        }
+
+        function fecharModalVerPedido() {
+            document.getElementById('modalVerPedidoHistorico').classList.add('hidden');
+            pedidoVisualizandoId = null;
+        }
+
+        function reimprimirPedidoHistoricoModal() {
+            if (!pedidoVisualizandoId) return;
+            const pedido = historico.find(p => p.id === pedidoVisualizandoId);
+            if (pedido) {
+                const texto = montarTextoComanda(pedido);
+                imprimirViaBluetoothDireto(texto);
+            }
         }
 
         function editarPedidoHistorico(id) {
